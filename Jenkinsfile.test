@@ -1,0 +1,22 @@
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Test') {
+            steps {
+                echo 'Starting Laravel tests'
+
+                sh '''
+                    set -e
+                    cp .env.example .env
+                    composer install --no-interaction --prefer-dist
+                    php artisan key:generate
+                    php artisan test
+                '''
+
+                echo 'Laravel tests completed successfully'
+            }
+        }
+    }
+}
