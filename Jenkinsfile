@@ -3,27 +3,23 @@ pipeline {
     agent any
 
     stages {
-        stage('Checkout') {
+        stage('Build') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/Hanzala-Naseer/laravel-jenkins.git'
-            }
-        }
-
-        stage('Install Dependencies') {
-            steps {
-                sh '''
-                    cp .env.example .env
-                    composer install --no-interaction --prefer-dist
-                    php artisan key:generate
-                '''
+                sh './build.sh'
             }
         }
 
         stage('Test') {
             steps {
-                sh 'php artisan test'
+                sh './test.sh'
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh './deploy.sh'
             }
         }
     }
 }
+
