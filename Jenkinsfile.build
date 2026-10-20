@@ -2,7 +2,6 @@
 pipeline {
     agent any
 
-
     stages {
         stage('Checkout Source') {
             steps {
@@ -31,6 +30,14 @@ pipeline {
                     test -f composer.lock
                     echo "Laravel build and dependency installation completed."
                 '''
+            }
+        }
+
+        stage('Trigger Tests') {
+            steps {
+                build job: 'Laravel-Test',
+                    wait: true,
+                    propagate: true
             }
         }
     }
