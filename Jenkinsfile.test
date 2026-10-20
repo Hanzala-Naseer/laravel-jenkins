@@ -5,7 +5,6 @@ pipeline {
     stages {
         stage('Checkout Source') {
             steps {
-                checkout scm
                 echo 'Source code checked out successfully.'
             }
         }
@@ -21,12 +20,24 @@ pipeline {
             }
         }
 
+        stage('Prepare Test Environment') {
+            steps {
+                sh '''
+                    set -eu
+
+                    if [ ! -f .env ]; then
+                        cp .env.example .env
+                    fi
+
+                    php artisan key:generate --env=testing --force
+                '''
+            }
+        }
+
         stage('Run Laravel Tests') {
             steps {
                 sh '''
                     set -eu
-                    test -f artisan
-                    php artisan key:generate --env=testing
                     php artisan test
                 '''
             }
