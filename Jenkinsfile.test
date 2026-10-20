@@ -5,6 +5,7 @@ pipeline {
     stages {
         stage('Checkout Source') {
             steps {
+                checkout scm
                 echo 'Source code checked out successfully.'
             }
         }
@@ -40,6 +41,14 @@ pipeline {
                     set -eu
                     php artisan test
                 '''
+            }
+        }
+
+        stage('Trigger Deployment') {
+            steps {
+                build job: 'Laravel-CI-CD 3',
+                    wait: true,
+                    propagate: true
             }
         }
     }
