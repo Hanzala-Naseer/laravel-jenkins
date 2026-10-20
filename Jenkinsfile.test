@@ -46,7 +46,7 @@ pipeline {
 
         stage('Trigger Deployment') {
             steps {
-                build job: 'Laravel-CI-CD 3',
+                build job: 'Laravel-Deploy',
                     wait: true,
                     propagate: true
             }
