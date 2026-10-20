@@ -3,31 +3,36 @@ pipeline {
     agent any
 
     stages {
+        stage('Checkout Source') {
+            steps {
+                checkout scm
+                echo 'Source code checked out successfully.'
+            }
+        }
+
+        stage('Verify Deployment Configuration') {
+            steps {
+                sh '''
+                    set -eu
+                    test -f artisan
+                    test -f composer.json
+                    test -f composer.lock
+                    echo "Deployment files verified."
+                '''
+            }
+        }
+
         stage('Deploy to AWS EC2') {
             steps {
-                echo 'Starting Laravel deployment to AWS EC2...'
-
                 sshagent(credentials: ['laravel-ec2-ssh']) {
                     sh '''
                         set -eu
 
-                        echo "Checking SSH connection to AWS..."
+                        DEPLOY_HOST="ubuntu@16.170.212.217"
+                        DEPLOY_DIR="/home/ubuntu/laravel-jenkins"
 
-                        ssh -o StrictHostKeyChecking=accept-new \
-                            -o ConnectTimeout=15 \
-                            ubuntu@16.170.212.217 \
-                            "echo 'SSH connection successful'"
-
-                        echo "Preparing deployment directory..."
-
-                        ssh ubuntu@16.170.212.217 '
-                            set -eu
-                            test -f /home/ubuntu/laravel-jenkins/.env
-                            test -f /home/ubuntu/laravel-jenkins/database/database.sqlite
-                            echo "Production environment and SQLite database verified."
-                        '
-
-                        echo "Syncing application files..."
+                        ssh -o StrictHostKeyChecking=accept-new "$DEPLOY_HOST" \
+                            "test -d '$DEPLOY_DIR'"
 
                         rsync -az --delete \
                             --exclude='.env' \
@@ -38,34 +43,34 @@ pipeline {
                             --exclude='database/database.sqlite' \
                             --exclude='bootstrap/cache/*.php' \
                             -e "ssh -o StrictHostKeyChecking=accept-new" \
-                            ./ ubuntu@16.170.212.217:/home/ubuntu/laravel-jenkins/
+                            ./ "$DEPLOY_HOST:$DEPLOY_DIR/"
 
-                        echo "Installing production dependencies..."
-
-                        ssh ubuntu@16.170.212.217 '
+                        ssh "$DEPLOY_HOST" "
                             set -eu
-                            cd /home/ubuntu/laravel-jenkins
-                            composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+                            cd '$DEPLOY_DIR'
+
+                            composer install \
+                                --no-dev \
+                                --no-interaction \
+                                --prefer-dist \
+                                --optimize-autoloader
+
                             php artisan migrate --force
                             php artisan optimize:clear
                             php artisan config:cache
                             php artisan route:cache
                             php artisan view:cache
+
                             sudo chown -R ubuntu:www-data storage bootstrap/cache
                             sudo chmod -R ug+rwX storage bootstrap/cache
-                            sudo chown ubuntu:www-data database database/database.sqlite
-                            sudo chmod 775 database
-                            sudo chmod 664 database/database.sqlite
+
                             sudo nginx -t
                             sudo systemctl reload nginx
-                        '
 
-                        echo "Checking deployed application..."
+                            curl -fsS http://127.0.0.1/ > /dev/null
 
-                        ssh ubuntu@16.170.212.217 \
-                            "curl -fsS -o /dev/null http://127.0.0.1/"
-
-                        echo "Laravel deployment completed successfully."
+                            echo 'Laravel deployment completed successfully.'
+                        "
                     '''
                 }
             }
