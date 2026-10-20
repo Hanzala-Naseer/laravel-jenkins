@@ -26,6 +26,7 @@ pipeline {
                 sh '''
                     set -eu
                     test -f artisan
+                    php artisan key:generate --env=testing
                     php artisan test
                 '''
             }
